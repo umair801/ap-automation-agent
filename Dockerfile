@@ -30,6 +30,10 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY . .
 
+# Copy and make start script executable (must be done as root)
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Create non-root user for security
 RUN adduser --disabled-password --gecos "" appuser \
     && chown -R appuser:appuser /app
@@ -41,10 +45,6 @@ EXPOSE 8000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/metrics/health')" || exit 1
-
-# Copy and make start script executable
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
 
 # Start the FastAPI app via shell script
 CMD ["/bin/sh", "/app/start.sh"]
