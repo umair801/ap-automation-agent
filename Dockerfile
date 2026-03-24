@@ -43,4 +43,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/metrics/health')" || exit 1
 
 # Start the FastAPI app with Uvicorn
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2
