@@ -7,7 +7,7 @@ import structlog
 from fastapi import APIRouter, File, HTTPException, UploadFile, Request
 from fastapi.responses import JSONResponse
 
-from core.database import insert_invoice
+from core.database import insert_invoice, get_existing_invoice_numbers
 from core.config import get_settings
 from agents.extraction_agent import run_extraction_agent
 from agents.validation_agent import run_validation_agent
@@ -39,7 +39,8 @@ async def ingest_pdf(file: Annotated[UploadFile, File(description="Invoice PDF f
 
         invoice = Invoice(source=IngestionSource.PDF_UPLOAD)
         invoice = run_extraction_agent(invoice, contents)
-        invoice = run_validation_agent(invoice)
+        existing_numbers = get_existing_invoice_numbers()
+        invoice = run_validation_agent(invoice, existing_invoice_numbers=existing_numbers)
 
         is_valid = invoice.status == InvoiceStatus.VALIDATED
         vendor_name = invoice.vendor.vendor_name if invoice.vendor else None
@@ -112,7 +113,8 @@ async def ingest_email_webhook(request: Request):
         from agents.extraction_agent import extract_invoice_text_mode
         invoice = Invoice(source=IngestionSource.EMAIL)
         invoice = extract_invoice_text_mode(invoice, body)
-        invoice = run_validation_agent(invoice)
+        existing_numbers = get_existing_invoice_numbers()
+        invoice = run_validation_agent(invoice, existing_invoice_numbers=existing_numbers)
 
         email_is_valid = invoice.status == InvoiceStatus.VALIDATED
         email_vendor_name = invoice.vendor.vendor_name if invoice.vendor else None
@@ -177,7 +179,8 @@ async def ingest_edi(file: Annotated[UploadFile, File(description="EDI 810 invoi
 
         invoice = Invoice(source=IngestionSource.EDI)
         invoice = run_extraction_agent(invoice, contents)
-        invoice = run_validation_agent(invoice)
+        existing_numbers = get_existing_invoice_numbers()
+        invoice = run_validation_agent(invoice, existing_invoice_numbers=existing_numbers)
 
         edi_is_valid = invoice.status == InvoiceStatus.VALIDATED
         edi_vendor_name = invoice.vendor.vendor_name if invoice.vendor else None

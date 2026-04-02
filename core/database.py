@@ -40,6 +40,17 @@ def update_invoice_status(invoice_number: str, status: str, **kwargs) -> dict:
     return result.data[0] if result.data else {}
 
 
+def get_existing_invoice_numbers() -> list[str]:
+    """Return all invoice numbers already stored in Supabase for duplicate detection."""
+    client = get_supabase()
+    result = client.table("ap_invoices").select("invoice_number").execute()
+    return [
+        row["invoice_number"]
+        for row in (result.data or [])
+        if row.get("invoice_number")
+    ]
+
+
 def insert_audit_entry(data: dict) -> dict:
     client = get_supabase()
     result = client.table("ap_audit_log").insert(data).execute()
