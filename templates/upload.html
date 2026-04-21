@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schedule Extractor | Datawebify</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+      color: #1a2636;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 40px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #1F4E79;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a2636;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #5a6a7a;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .drop-zone {
+      border: 2px dashed #a0b4c8;
+      border-radius: 10px;
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 24px;
+      background: #f7fafd;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #1F4E79;
+      background: #eaf1f9;
+    }
+
+    .drop-zone input[type="file"] {
+      display: none;
+    }
+
+    .drop-icon { font-size: 36px; margin-bottom: 10px; }
+
+    .drop-label {
+      font-size: 15px;
+      color: #3a5068;
+      margin-bottom: 6px;
+    }
+
+    .drop-hint {
+      font-size: 12px;
+      color: #8a9daf;
+    }
+
+    .file-name {
+      font-size: 13px;
+      color: #1F4E79;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #1F4E79;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn:hover { background: #163a5c; }
+    .btn:disabled { background: #a0b4c8; cursor: not-allowed; }
+
+    .status {
+      margin-top: 24px;
+      font-size: 14px;
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: none;
+      line-height: 1.6;
+    }
+
+    .status.info    { background: #eaf1f9; color: #1F4E79; display: block; }
+    .status.success { background: #e6f4ea; color: #1e6b3a; display: block; }
+    .status.error   { background: #fdecea; color: #b71c1c; display: block; }
+
+    .progress-bar-wrap {
+      background: #e0eaf3;
+      border-radius: 99px;
+      height: 6px;
+      margin-top: 12px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #1F4E79;
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+
+    .download-btn {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 22px;
+      background: #1e6b3a;
+      color: #fff;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .download-btn:hover { background: #145228; }
+
+    .steps {
+      margin-top: 36px;
+      border-top: 1px solid #e8eef4;
+      padding-top: 24px;
+    }
+
+    .steps-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8a9daf;
+      margin-bottom: 14px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-num {
+      min-width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e0eaf3;
+      color: #1F4E79;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-text {
+      font-size: 13px;
+      color: #5a6a7a;
+      line-height: 1.5;
+    }
+
+    footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: #a0b4c8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="logo">Datawebify</div>
+    <h1>Schedule Extractor</h1>
+    <p class="subtitle">Upload a multi-page architectural PDF. The system will detect schedule pages and export a formatted Excel takeoff file.</p>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".pdf" />
+      <div class="drop-icon">📄</div>
+      <div class="drop-label">Drop your PDF here or <strong>click to browse</strong></div>
+      <div class="drop-hint">PDF files only</div>
+      <div class="file-name" id="fileName"></div>
+    </div>
+
+    <button class="btn" id="uploadBtn" disabled>Extract Schedule</button>
+
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="status" id="statusBox"></div>
+
+    <div class="steps">
+      <div class="steps-title">How it works</div>
+      <div class="step"><div class="step-num">1</div><div class="step-text">Each page is classified: schedule, floor plan, elevation, cover, or notes.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Schedule pages are sent to the extraction agent to pull window and door data.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Results are validated and exported to a formatted Excel file for your takeoff.</div></div>
+    </div>
+  </div>
+
+  <footer>Datawebify &mdash; datawebify.com</footer>
+
+  <script>
+    const dropZone   = document.getElementById("dropZone");
+    const fileInput  = document.getElementById("fileInput");
+    const uploadBtn  = document.getElementById("uploadBtn");
+    const statusBox  = document.getElementById("statusBox");
+    const fileNameEl = document.getElementById("fileName");
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar  = document.getElementById("progressBar");
+
+    let selectedFile = null;
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === "application/pdf") {
+        setFile(file);
+      } else {
+        showStatus("error", "Please drop a PDF file.");
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+
+    function setFile(file) {
+      selectedFile = file;
+      fileNameEl.textContent = file.name;
+      uploadBtn.disabled = false;
+      clearStatus();
+    }
+
+    function showStatus(type, html) {
+      statusBox.className = "status " + type;
+      statusBox.innerHTML = html;
+    }
+
+    function clearStatus() {
+      statusBox.className = "status";
+      statusBox.innerHTML = "";
+    }
+
+    function animateProgress(targetPct, duration = 600) {
+      progressWrap.style.display = "block";
+      progressBar.style.width = targetPct + "%";
+    }
+
+    uploadBtn.addEventListener("click", async () => {
+      if (!selectedFile) return;
+
+      uploadBtn.disabled = true;
+      clearStatus();
+      animateProgress(15);
+      showStatus("info", "Uploading and classifying pages...");
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        animateProgress(40);
+        const response = await fetch("/extract/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        animateProgress(80);
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showStatus("error", "Error: " + (data.detail || "Extraction failed."));
+          uploadBtn.disabled = false;
+          return;
+        }
+
+        animateProgress(100);
+
+        const { job_id, total_pages, schedule_pages, total_items } = data;
+
+        showStatus("success",
+          `<strong>Extraction complete.</strong><br>` +
+          `Pages scanned: ${total_pages} &nbsp;|&nbsp; Schedule pages found: ${schedule_pages}<br>` +
+          `Items extracted: ${total_items}<br><br>` +
+          `<a class="download-btn" href="/extract/download/${job_id}">⬇ Download Excel File</a>`
+        );
+
+      } catch (err) {
+        showStatus("error", "Network error: " + err.message);
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
