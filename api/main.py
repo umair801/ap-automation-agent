@@ -9,6 +9,7 @@ from api.ingestion_router import router as ingestion_router
 from api.approval_router import router as approval_router
 from api.metrics_router import router as metrics_router
 from api.extraction_router import router as extraction_router
+from api.order_router import router as order_router
 from core.config import get_settings
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
@@ -60,6 +61,7 @@ app.include_router(ingestion_router)
 app.include_router(approval_router)
 app.include_router(metrics_router)
 app.include_router(extraction_router)
+app.include_router(order_router)
 
 templates = Jinja2Templates(directory="templates")
 
