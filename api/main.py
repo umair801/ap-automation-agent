@@ -67,6 +67,7 @@ app.include_router(docx_router)
 
 templates = Jinja2Templates(directory="templates")
 
+
 @app.get("/upload", tags=["Schedule Extraction"])
 async def upload_page(request: Request):
     return templates.TemplateResponse("upload.html", {"request": request})
