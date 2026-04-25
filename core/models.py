@@ -269,3 +269,102 @@ class ExceptionRecord(BaseModel):
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
     resolution_notes: Optional[str] = None
+
+
+# ─── Order Models (Track B) ───────────────────────────────────────────────────────────────
+
+class OrderStatus(str, Enum):
+    RECEIVED       = "received"
+    EXTRACTING     = "extracting"
+    EXTRACTED      = "extracted"
+    REVIEW_NEEDED  = "review_needed"   # confidence below threshold
+    VALIDATED      = "validated"
+    SYNCING        = "syncing"
+    SYNCED         = "synced"
+    FAILED         = "failed"
+
+
+class OrderSource(str, Enum):
+    EMAIL          = "email"
+    EMAIL_ATTACHMENT = "email_attachment"
+    PDF_UPLOAD     = "pdf_upload"
+
+
+class OrderLanguage(str, Enum):
+    ENGLISH        = "en"
+    FRENCH         = "fr"
+    UNKNOWN        = "unknown"
+
+
+class OrderLineItem(BaseModel):
+    model_config = {"validate_assignment": True}
+    line_number:       int
+    sku:               Optional[str]     = None
+    description:       str
+    quantity:          Decimal
+    unit_price:        Optional[Decimal] = None
+    total:             Optional[Decimal] = None
+    unit_of_measure:   Optional[str]     = None
+    delivery_date:     Optional[date]    = None
+    customer_line_ref: Optional[str]     = None   # buyer's own line reference
+
+
+class CustomerInfo(BaseModel):
+    model_config = {"validate_assignment": True}
+    customer_name:    str
+    customer_id:      Optional[str] = None
+    customer_email:   Optional[str] = None
+    customer_phone:   Optional[str] = None
+    customer_address: Optional[str] = None
+    contact_person:   Optional[str] = None
+
+
+class SalesOrder(BaseModel):
+    model_config = {"validate_assignment": True}
+    id:           UUID     = Field(default_factory=uuid4)
+    created_at:   datetime = Field(default_factory=datetime.utcnow)
+    updated_at:   datetime = Field(default_factory=datetime.utcnow)
+
+    # Ingestion metadata
+    source:            OrderSource
+    email_message_id:  Optional[str] = None
+    raw_file_path:     Optional[str] = None
+    detected_language: OrderLanguage = OrderLanguage.UNKNOWN
+
+    # Extracted fields
+    order_number:       Optional[str]          = None
+    order_date:         Optional[date]         = None
+    requested_delivery: Optional[date]         = None
+    customer:           Optional[CustomerInfo] = None
+    customer_po_ref:    Optional[str]          = None   # buyer's PO reference
+    currency:           str                    = "USD"
+    subtotal:           Optional[Decimal]      = None
+    tax:                Optional[Decimal]      = None
+    total:              Optional[Decimal]      = None
+    line_items:         List[OrderLineItem]    = Field(default_factory=list)
+    shipping_address:   Optional[str]          = None
+    billing_address:    Optional[str]          = None
+    payment_terms:      Optional[str]          = None
+    notes:              Optional[str]          = None
+
+    # Workflow state
+    status:              OrderStatus    = OrderStatus.RECEIVED
+    extraction_confidence: Optional[float] = None
+    extraction_model:    str            = "gpt-4o"
+    review_reasons:      List[str]      = Field(default_factory=list)
+    erp_sync_id:         Optional[str]  = None
+    erp_sync_error:      Optional[str]  = None
+
+
+class OrderReviewItem(BaseModel):
+    """Human review queue entry for low-confidence order extractions."""
+    model_config = {"validate_assignment": True}
+    id:           UUID     = Field(default_factory=uuid4)
+    order_id:     UUID
+    created_at:   datetime = Field(default_factory=datetime.utcnow)
+    confidence:   float
+    reasons:      List[str]
+    raw_text:     Optional[str] = None
+    resolved:     bool          = False
+    resolved_at:  Optional[datetime] = None
+    resolved_by:  Optional[str]      = None

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Standardizer | Datawebify</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+      color: #1a2636;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 40px;
+      width: 100%;
+      max-width: 580px;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #1F4E79;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a2636;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #5a6a7a;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #a0b4c8;
+      border-radius: 10px;
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 24px;
+      background: #f7fafd;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #1F4E79;
+      background: #eaf1f9;
+    }
+
+    .drop-zone input[type="file"] { display: none; }
+    .drop-icon { font-size: 36px; margin-bottom: 10px; }
+
+    .drop-label {
+      font-size: 15px;
+      color: #3a5068;
+      margin-bottom: 6px;
+    }
+
+    .drop-hint { font-size: 12px; color: #8a9daf; }
+
+    .file-name {
+      font-size: 13px;
+      color: #1F4E79;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    /* Button */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #1F4E79;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn:hover { background: #163a5c; }
+    .btn:disabled { background: #a0b4c8; cursor: not-allowed; }
+
+    /* Progress bar */
+    .progress-bar-wrap {
+      background: #e0eaf3;
+      border-radius: 99px;
+      height: 6px;
+      margin-top: 12px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #1F4E79;
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    /* Status box */
+    .status {
+      margin-top: 24px;
+      font-size: 14px;
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: none;
+      line-height: 1.6;
+    }
+
+    .status.info    { background: #eaf1f9; color: #1F4E79; display: block; }
+    .status.success { background: #e6f4ea; color: #1e6b3a; display: block; }
+    .status.warning { background: #fff8e1; color: #7a5a00; display: block; }
+    .status.error   { background: #fdecea; color: #b71c1c; display: block; }
+
+    /* Confidence meter */
+    .confidence-wrap {
+      margin-top: 14px;
+    }
+
+    .confidence-label {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .confidence-bar-bg {
+      background: #c8e6c9;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .confidence-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+
+    /* Result cards */
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .result-tile {
+      background: #f0f4f8;
+      border-radius: 8px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .result-tile .val {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1F4E79;
+    }
+
+    .result-tile .lbl {
+      font-size: 11px;
+      color: #7a8fa0;
+      margin-top: 2px;
+    }
+
+    /* Download button */
+    .download-btn {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 22px;
+      background: #1e6b3a;
+      color: #fff;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .download-btn:hover { background: #145228; }
+
+    .review-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 5px 12px;
+      background: #fff3cd;
+      color: #7a5a00;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #ffe082;
+    }
+
+    /* How it works */
+    .steps {
+      margin-top: 36px;
+      border-top: 1px solid #e8eef4;
+      padding-top: 24px;
+    }
+
+    .steps-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8a9daf;
+      margin-bottom: 14px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-num {
+      min-width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e0eaf3;
+      color: #1F4E79;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-text {
+      font-size: 13px;
+      color: #5a6a7a;
+      line-height: 1.5;
+    }
+
+    footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: #a0b4c8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="logo">Datawebify</div>
+    <h1>Document Standardizer</h1>
+    <p class="subtitle">Upload a Word document. The system will extract its content, normalize the structure using AI, and return a fully standardized .docx file.</p>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".docx" />
+      <div class="drop-icon">📄</div>
+      <div class="drop-label">Drop your Word document here or <strong>click to browse</strong></div>
+      <div class="drop-hint">.docx files only</div>
+      <div class="file-name" id="fileName"></div>
+    </div>
+
+    <button class="btn" id="uploadBtn" disabled>Standardize Document</button>
+
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="status" id="statusBox"></div>
+
+    <div class="steps">
+      <div class="steps-title">How it works</div>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">The document is parsed to extract headings, sections, tables, and metadata.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">AI maps your content to a master 10-section structure and scores confidence per section.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">A clean, formatted Word document is rebuilt with consistent styles, headings, and page numbers.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Datawebify &mdash; datawebify.com</footer>
+
+  <script>
+    const dropZone    = document.getElementById("dropZone");
+    const fileInput   = document.getElementById("fileInput");
+    const uploadBtn   = document.getElementById("uploadBtn");
+    const statusBox   = document.getElementById("statusBox");
+    const fileNameEl  = document.getElementById("fileName");
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar  = document.getElementById("progressBar");
+
+    let selectedFile  = null;
+    let outputFileName = null;
+
+    // Drop zone interactions
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (file && file.name.endsWith(".docx")) {
+        setFile(file);
+      } else {
+        showStatus("error", "Please drop a .docx file.");
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+
+    function setFile(file) {
+      selectedFile = file;
+      fileNameEl.textContent = file.name;
+      uploadBtn.disabled = false;
+      clearStatus();
+      outputFileName = null;
+    }
+
+    function showStatus(type, html) {
+      statusBox.className = "status " + type;
+      statusBox.innerHTML = html;
+    }
+
+    function clearStatus() {
+      statusBox.className = "status";
+      statusBox.innerHTML = "";
+    }
+
+    function setProgress(pct) {
+      progressWrap.style.display = "block";
+      progressBar.style.width = pct + "%";
+    }
+
+    function resetProgress() {
+      progressBar.style.width = "0%";
+      progressWrap.style.display = "none";
+    }
+
+    function confidenceColor(score) {
+      if (score >= 0.80) return "#2e7d32";
+      if (score >= 0.60) return "#f9a825";
+      return "#c62828";
+    }
+
+    // Main upload + batch flow
+    uploadBtn.addEventListener("click", async () => {
+      if (!selectedFile) return;
+
+      uploadBtn.disabled = true;
+      clearStatus();
+      resetProgress();
+      setProgress(10);
+      showStatus("info", "Uploading document...");
+
+      // Step 1: Upload
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      let uploadData;
+      try {
+        const uploadRes = await fetch("/docx/upload", {
+          method: "POST",
+          body: formData,
+        });
+        uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          showStatus("error", "Upload failed: " + (uploadData.detail || "Unknown error."));
+          uploadBtn.disabled = false;
+          resetProgress();
+          return;
+        }
+      } catch (err) {
+        showStatus("error", "Network error during upload: " + err.message);
+        uploadBtn.disabled = false;
+        resetProgress();
+        return;
+      }
+
+      setProgress(35);
+      showStatus("info", "Analyzing and normalizing document structure with AI...");
+
+      // Step 2: Trigger batch
+      let batchData;
+      try {
+        const batchRes = await fetch("/docx/batch", { method: "POST" });
+        batchData = await batchRes.json();
+        if (!batchRes.ok) {
+          showStatus("error", "Processing failed: " + (batchData.detail || "Unknown error."));
+          uploadBtn.disabled = false;
+          resetProgress();
+          return;
+        }
+      } catch (err) {
+        showStatus("error", "Network error during processing: " + err.message);
+        uploadBtn.disabled = false;
+        resetProgress();
+        return;
+      }
+
+      setProgress(100);
+
+      // Parse results
+      const results  = batchData.results || [];
+      const fileResult = results[0] || {};
+      const confidence = fileResult.overall_confidence ?? 0;
+      const pct = Math.round(confidence * 100);
+      const needsReview = fileResult.requires_human_review;
+      const status = fileResult.status;
+      const outPath = fileResult.output_path || "";
+      outputFileName = outPath.split(/[\\/]/).pop();
+
+      if (status === "failed") {
+        showStatus("error",
+          "<strong>Standardization failed.</strong><br>" +
+          (fileResult.error || "An unknown error occurred. Please try again.")
+        );
+        uploadBtn.disabled = false;
+        resetProgress();
+        return;
+      }
+
+      const fillColor = confidenceColor(confidence);
+      const reviewBadge = needsReview
+        ? `<div class="review-badge">⚠ Flagged for human review</div>`
+        : "";
+
+      const statusType = needsReview ? "warning" : "success";
+      const statusTitle = needsReview
+        ? "<strong>Standardization complete — review recommended.</strong>"
+        : "<strong>Standardization complete.</strong>";
+
+      showStatus(statusType,
+        statusTitle + "<br>" +
+        `<div class="result-grid">
+          <div class="result-tile"><div class="val">${batchData.total_files}</div><div class="lbl">Files Processed</div></div>
+          <div class="result-tile"><div class="val">${batchData.successful + batchData.partial}</div><div class="lbl">Succeeded</div></div>
+          <div class="result-tile"><div class="val">${batchData.failed}</div><div class="lbl">Failed</div></div>
+        </div>` +
+        `<div class="confidence-wrap">
+          <div class="confidence-label">
+            <span>AI Confidence Score</span>
+            <span style="color:${fillColor};font-weight:700">${pct}%</span>
+          </div>
+          <div class="confidence-bar-bg">
+            <div class="confidence-bar-fill" style="width:${pct}%;background:${fillColor}"></div>
+          </div>
+        </div>` +
+        reviewBadge +
+        (outputFileName
+          ? `<br><a class="download-btn" href="/docx/download/${encodeURIComponent(outputFileName)}">⬇ Download Standardized Document</a>`
+          : "")
+      );
+
+      uploadBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>

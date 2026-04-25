@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Extraction Demo | Datawebify</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      color: #1a2636;
+      padding: 40px 16px;
+    }
+
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 800px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      padding: 32px;
+    }
+
+    .logo {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #1F4E79;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #1a2636;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #5a6a7a;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .lang-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .lang-tab {
+      padding: 7px 18px;
+      border-radius: 6px;
+      border: 1.5px solid #d0dce8;
+      background: #f7fafd;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #5a6a7a;
+      transition: all 0.15s;
+    }
+
+    .lang-tab.active {
+      background: #1F4E79;
+      border-color: #1F4E79;
+      color: #fff;
+    }
+
+    .lang-tab:hover:not(.active) {
+      border-color: #1F4E79;
+      color: #1F4E79;
+    }
+
+    textarea {
+      width: 100%;
+      height: 320px;
+      border: 1.5px solid #d0dce8;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      font-family: "Courier New", monospace;
+      line-height: 1.7;
+      resize: vertical;
+      color: #1a2636;
+      background: #f9fbfd;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #1F4E79;
+      background: #fff;
+    }
+
+    .btn-extract {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 13px;
+      background: #1F4E79;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-extract:hover { background: #163a5c; }
+    .btn-extract:disabled { background: #a0b4c8; cursor: not-allowed; }
+
+    /* Results panel */
+    .result-placeholder {
+      text-align: center;
+      padding: 60px 20px;
+      color: #a0b4c8;
+    }
+
+    .result-placeholder .icon { font-size: 48px; margin-bottom: 12px; }
+    .result-placeholder p { font-size: 14px; }
+
+    /* Header row */
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .result-title { font-size: 16px; font-weight: 700; color: #1a2636; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge-green { background: #e6f4ea; color: #1e6b3a; }
+    .badge-amber { background: #fff8e1; color: #b45309; }
+    .badge-blue  { background: #e8f0fb; color: #1F4E79; }
+    .badge-red   { background: #fdecea; color: #b71c1c; }
+
+    /* Confidence bar */
+    .conf-wrap {
+      margin-bottom: 20px;
+    }
+
+    .conf-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #5a6a7a;
+      margin-bottom: 6px;
+    }
+
+    .conf-track {
+      height: 8px;
+      background: #e0eaf3;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .conf-bar {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+
+    /* Fields grid */
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .field {
+      background: #f7fafd;
+      border: 1px solid #e0eaf3;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .field-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8a9daf;
+      margin-bottom: 3px;
+      font-weight: 600;
+    }
+
+    .field-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a2636;
+      word-break: break-word;
+    }
+
+    .field-value.null { color: #c0ccd8; font-weight: 400; font-style: italic; }
+
+    /* Line items table */
+    .table-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a2636;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th {
+      background: #1F4E79;
+      color: #fff;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #e8eef4;
+      color: #1a2636;
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f7fafd; }
+
+    /* Review warning */
+    .review-box {
+      background: #fff8e1;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #92400e;
+    }
+
+    .review-box strong { display: block; margin-bottom: 4px; }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: #fdecea;
+      border: 1px solid #ef9a9a;
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #b71c1c;
+      font-size: 13px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 12px;
+      color: #a0b4c8;
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- LEFT: Input -->
+  <div class="card">
+    <div class="logo">Datawebify</div>
+    <h1>Order Extraction Demo</h1>
+    <p class="subtitle">Paste a sales order in English or French. The system extracts all fields, detects the language, and scores its own confidence.</p>
+
+    <div class="lang-tabs">
+      <button class="lang-tab active" onclick="loadSample('en')">🇬🇧 English Sample</button>
+      <button class="lang-tab" onclick="loadSample('fr')">🇫🇷 French Sample</button>
+      <button class="lang-tab" onclick="clearInput()">Clear</button>
+    </div>
+
+    <textarea id="orderText" placeholder="Paste your order text here..."></textarea>
+
+    <button class="btn-extract" id="extractBtn" onclick="extractOrder()">Extract Order</button>
+  </div>
+
+  <!-- RIGHT: Results -->
+  <div class="card" id="resultPanel">
+    <div class="result-placeholder" id="placeholder">
+      <div class="icon">📋</div>
+      <p>Results will appear here after extraction.</p>
+    </div>
+    <div id="resultContent" style="display:none;"></div>
+  </div>
+
+</div>
+
+<footer>Datawebify &mdash; datawebify.com &mdash; Order Processing Demo</footer>
+
+<script>
+const EN_SAMPLE = `Order Number: PO-2026-0042
+Order Date: 2026-04-22
+Customer: Acme Construction Ltd.
+Contact: John Smith
+Email: john@acmeconstruction.com
+Phone: +61 2 9000 1234
+Shipping Address: 14 Industrial Ave, Sydney NSW 2000
+
+Line Items:
+1. SKU: WIN-ALU-001, Aluminium Casement Window 900x1200, Qty: 10, Unit Price: 450.00
+2. SKU: WIN-ALU-002, Aluminium Sliding Window 1500x900, Qty: 6, Unit Price: 520.00
+3. SKU: DOR-TIM-003, Timber Entry Door 2100x900, Qty: 4, Unit Price: 1200.00
+
+Subtotal: 13320.00
+Tax (GST 10%): 1332.00
+Total: 14652.00
+Payment Terms: Net 30
+Requested Delivery: 2026-05-15
+Customer PO Ref: ACM-2026-0042
+Notes: Deliver to site B entrance. Call before delivery.`;
+
+const FR_SAMPLE = `Bon de Commande: BC-2026-0088
+Date de commande: 22 avril 2026
+Client: Constructions Leblanc Inc.
+Contact: Marie Leblanc
+Courriel: marie@leblanc.ca
+Telephone: +1 514 555 0199
+Adresse de livraison: 88 Rue Industrielle, Montreal QC H2X 1Y4
+
+Articles commandes:
+1. REF: FEN-PVC-002, Fenetre PVC double vitrage 600x900, Qte: 20, Prix unitaire: 280,00
+2. REF: FEN-PVC-004, Fenetre PVC oscillo-battante 900x1200, Qte: 12, Prix unitaire: 340,00
+3. REF: POR-ALU-005, Porte aluminium coulissante 2100x1800, Qte: 6, Prix unitaire: 950,00
+
+Sous-total: 15280,00
+TPS (5%): 764,00
+Total: 16044,00
+Conditions de paiement: Net 30 jours
+Livraison souhaitee: 2026-05-30
+Reference PO client: LEB-2026-0088
+Notes: Livraison entre 8h et 16h. Contacter Marie avant la livraison.`;
+
+function loadSample(lang) {
+  document.getElementById('orderText').value = lang === 'en' ? EN_SAMPLE : FR_SAMPLE;
+  document.querySelectorAll('.lang-tab').forEach((t, i) => {
+    t.classList.toggle('active', (lang === 'en' && i === 0) || (lang === 'fr' && i === 1));
+  });
+}
+
+function clearInput() {
+  document.getElementById('orderText').value = '';
+  document.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+}
+
+function langLabel(code) {
+  return code === 'en' ? '🇬🇧 English' : code === 'fr' ? '🇫🇷 French' : '❓ Unknown';
+}
+
+function confColor(pct) {
+  if (pct >= 70) return '#1e6b3a';
+  if (pct >= 40) return '#b45309';
+  return '#b71c1c';
+}
+
+function val(v) {
+  if (v === null || v === undefined || v === '') return '<span class="null">—</span>';
+  return v;
+}
+
+async function extractOrder() {
+  const text = document.getElementById('orderText').value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('extractBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Extracting...';
+
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('resultContent').style.display = 'none';
+
+  try {
+    const res = await fetch('/orders/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    const d = await res.json();
+
+    if (!res.ok || d.error) {
+      document.getElementById('resultContent').innerHTML =
+        `<div class="error-box"><strong>Extraction failed</strong>${d.error || 'Unknown error'}</div>`;
+      document.getElementById('resultContent').style.display = 'block';
+      return;
+    }
+
+    const confPct = d.confidence_pct;
+    const confCol = confColor(confPct);
+
+    const reviewBlock = d.needs_review
+      ? `<div class="review-box">
+           <strong>⚠ Routed to Human Review Queue</strong>
+           Confidence ${confPct}% is below the 70% threshold.
+           ${d.review_reasons.length ? '<br>Reasons: ' + d.review_reasons.join('; ') : ''}
+         </div>`
+      : '';
+
+    const lineRows = (d.line_items || []).map(item => `
+      <tr>
+        <td>${item.line_number}</td>
+        <td><strong>${item.sku || '—'}</strong></td>
+        <td>${item.description}</td>
+        <td>${item.quantity} ${item.unit_of_measure || ''}</td>
+        <td>${item.unit_price || '—'}</td>
+        <td>${item.total || '—'}</td>
+        <td>${item.delivery_date || '—'}</td>
+      </tr>`).join('');
+
+    document.getElementById('resultContent').innerHTML = `
+      <div class="result-header">
+        <div class="result-title">Extraction Result</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="badge badge-blue">${langLabel(d.detected_language)}</span>
+          <span class="badge ${d.passed_threshold ? 'badge-green' : 'badge-amber'}">
+            ${d.passed_threshold ? '✓ Passed' : '⚠ Review'}
+          </span>
+          <span class="badge badge-blue">${d.status.toUpperCase()}</span>
+        </div>
+      </div>
+
+      <div class="conf-wrap">
+        <div class="conf-label">
+          <span>Extraction Confidence</span>
+          <span style="font-weight:700;color:${confCol}">${confPct}%</span>
+        </div>
+        <div class="conf-track">
+          <div class="conf-bar" style="width:${confPct}%;background:${confCol};"></div>
+        </div>
+      </div>
+
+      ${reviewBlock}
+
+      <div class="fields-grid">
+        <div class="field"><div class="field-label">Order Number</div><div class="field-value">${val(d.order_number)}</div></div>
+        <div class="field"><div class="field-label">Order Date</div><div class="field-value">${val(d.order_date)}</div></div>
+        <div class="field"><div class="field-label">Customer</div><div class="field-value">${val(d.customer_name)}</div></div>
+        <div class="field"><div class="field-label">Contact Person</div><div class="field-value">${val(d.contact_person)}</div></div>
+        <div class="field"><div class="field-label">Customer Email</div><div class="field-value">${val(d.customer_email)}</div></div>
+        <div class="field"><div class="field-label">Customer PO Ref</div><div class="field-value">${val(d.customer_po_ref)}</div></div>
+        <div class="field"><div class="field-label">Currency</div><div class="field-value">${val(d.currency)}</div></div>
+        <div class="field"><div class="field-label">Payment Terms</div><div class="field-value">${val(d.payment_terms)}</div></div>
+        <div class="field"><div class="field-label">Subtotal</div><div class="field-value">${val(d.subtotal)}</div></div>
+        <div class="field"><div class="field-label">Tax</div><div class="field-value">${val(d.tax)}</div></div>
+        <div class="field"><div class="field-label">Total</div><div class="field-value">${val(d.total)}</div></div>
+        <div class="field"><div class="field-label">Requested Delivery</div><div class="field-value">${val(d.requested_delivery)}</div></div>
+        <div class="field" style="grid-column:1/-1"><div class="field-label">Shipping Address</div><div class="field-value">${val(d.shipping_address)}</div></div>
+      </div>
+
+      <div class="table-title">Line Items (${d.line_items.length})</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>SKU</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Delivery</th>
+          </tr>
+        </thead>
+        <tbody>${lineRows}</tbody>
+      </table>
+    `;
+
+    document.getElementById('resultContent').style.display = 'block';
+
+  } catch (err) {
+    document.getElementById('resultContent').innerHTML =
+      `<div class="error-box"><strong>Network error</strong>${err.message}</div>`;
+    document.getElementById('resultContent').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Extract Order';
+  }
+}
+
+// Load English sample by default
+loadSample('en');
+</script>
+
+</body>
+</html>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Optional
@@ -289,3 +290,226 @@ def run_extraction_agent(
     else:
         # Scanned or low-quality PDF — use vision mode
         return extract_invoice_vision_mode(invoice, pdf_bytes)
+    
+    
+# ─── Technical Schedule Extraction ───────────────────────────────
+
+SCHEDULE_EXTRACTION_PROMPT = """You are a specialist in reading architectural and construction window/door schedule tables.
+
+Your task is to extract every row from the schedule table on this page and return them as a single valid JSON object.
+No explanation. No markdown. No code fences. Raw JSON only.
+
+Extract the following fields for each row:
+
+{
+  "schedule_items": [
+    {
+      "item_type": "window or door",
+      "type_mark": "alphanumeric code e.g. W1, D3A or null",
+      "size": "width x height string e.g. 900x1200 or null",
+      "width_mm": numeric or null,
+      "height_mm": numeric or null,
+      "quantity": integer or null,
+      "location": "room name or area description or null",
+      "room_reference": "room number or code or null",
+      "elevation_reference": "elevation drawing reference e.g. A-101 or null",
+      "finish": "material or finish description or null",
+      "frame_type": "frame material e.g. aluminium, timber or null",
+      "glazing": "glazing spec e.g. double glazed, clear or null",
+      "notes": "any additional notes for this item or null"
+    }
+  ],
+  "schedule_title": "title of the schedule if visible or null",
+  "total_items_found": integer,
+  "confidence": float between 0.0 and 1.0
+}
+
+Rules:
+- Extract every row in the table, even if some fields are missing
+- size should be the raw string exactly as it appears in the document
+- width_mm and height_mm should be parsed numeric values from the size field, in millimetres
+- quantity must be an integer, default to 1 if not shown
+- confidence reflects how clearly the table was readable and how complete the data is
+- Return only the JSON object. Nothing else.
+"""
+
+CONFIDENCE_THRESHOLD = 0.5
+
+
+@dataclass
+class ScheduleItem:
+    """A single extracted row from a window/door schedule."""
+    item_type: Optional[str]
+    type_mark: Optional[str]
+    size: Optional[str]
+    width_mm: Optional[float]
+    height_mm: Optional[float]
+    quantity: int
+    location: Optional[str]
+    room_reference: Optional[str]
+    elevation_reference: Optional[str]
+    finish: Optional[str]
+    frame_type: Optional[str]
+    glazing: Optional[str]
+    notes: Optional[str]
+
+
+@dataclass
+class ScheduleExtractionResult:
+    """Result of extracting one schedule page."""
+    page_number: int
+    schedule_title: Optional[str]
+    items: list[ScheduleItem]
+    confidence: float
+    passed_threshold: bool
+    error: Optional[str] = None
+
+
+def _parse_schedule_response(raw_json: str, page_number: int) -> ScheduleExtractionResult:
+    """Parse Claude's JSON response into a ScheduleExtractionResult."""
+    import json as _json
+
+    try:
+        data = _json.loads(raw_json.strip())
+    except _json.JSONDecodeError as e:
+        logger.error("Claude returned invalid JSON", page=page_number, error=str(e))
+        return ScheduleExtractionResult(
+            page_number=page_number,
+            schedule_title=None,
+            items=[],
+            confidence=0.0,
+            passed_threshold=False,
+            error=f"JSON parse error: {e}",
+        )
+
+    confidence = float(data.get("confidence") or 0.0)
+    raw_items = data.get("schedule_items") or []
+
+    items = []
+    for row in raw_items:
+        try:
+            item = ScheduleItem(
+                item_type=row.get("item_type"),
+                type_mark=row.get("type_mark"),
+                size=row.get("size"),
+                width_mm=float(row["width_mm"]) if row.get("width_mm") is not None else None,
+                height_mm=float(row["height_mm"]) if row.get("height_mm") is not None else None,
+                quantity=int(row.get("quantity") or 1),
+                location=row.get("location"),
+                room_reference=row.get("room_reference"),
+                elevation_reference=row.get("elevation_reference"),
+                finish=row.get("finish"),
+                frame_type=row.get("frame_type"),
+                glazing=row.get("glazing"),
+                notes=row.get("notes"),
+            )
+            items.append(item)
+        except Exception as e:
+            logger.warning("Failed to parse schedule row", row=row, error=str(e))
+
+    passed = confidence >= CONFIDENCE_THRESHOLD
+
+    logger.info(
+        "Schedule page parsed",
+        page=page_number,
+        items_found=len(items),
+        confidence=confidence,
+        passed_threshold=passed,
+    )
+
+    return ScheduleExtractionResult(
+        page_number=page_number,
+        schedule_title=data.get("schedule_title"),
+        items=items,
+        confidence=confidence,
+        passed_threshold=passed,
+    )
+
+
+def extract_schedule_page(pdf_bytes: bytes, page_number: int) -> ScheduleExtractionResult:
+    """
+    Extract window/door schedule data from a single PDF page using Claude vision.
+
+    Args:
+        pdf_bytes:    Raw bytes of the full PDF.
+        page_number:  0-indexed page number to extract.
+
+    Returns:
+        ScheduleExtractionResult with items list and confidence score.
+        Results below CONFIDENCE_THRESHOLD have passed_threshold=False.
+    """
+    import anthropic as _anthropic
+
+    logger.info("Extracting schedule page", page=page_number)
+
+    image_b64 = _pdf_page_to_base64(pdf_bytes, page_num=page_number)
+
+    anthropic_client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    try:
+        response = anthropic_client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=4096,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/png",
+                                "data": image_b64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": SCHEDULE_EXTRACTION_PROMPT,
+                        },
+                    ],
+                }
+            ],
+        )
+
+        raw_json = response.content[0].text
+        return _parse_schedule_response(raw_json, page_number)
+
+    except Exception as e:
+        logger.error("Schedule extraction failed", page=page_number, error=str(e))
+        return ScheduleExtractionResult(
+            page_number=page_number,
+            schedule_title=None,
+            items=[],
+            confidence=0.0,
+            passed_threshold=False,
+            error=str(e),
+        )
+
+
+def extract_all_schedule_pages(
+    pdf_bytes: bytes,
+    schedule_page_numbers: list[int],
+) -> list[ScheduleExtractionResult]:
+    """
+    Run schedule extraction across all pages identified by the page classifier.
+
+    Args:
+        pdf_bytes:             Raw bytes of the full PDF.
+        schedule_page_numbers: List of 0-indexed page numbers to process.
+
+    Returns:
+        List of ScheduleExtractionResult, one per page.
+        Only results with passed_threshold=True should be exported.
+    """
+    results = []
+    for page_num in schedule_page_numbers:
+        result = extract_schedule_page(pdf_bytes, page_num)
+        results.append(result)
+
+    passed = [r for r in results if r.passed_threshold]
+    logger.info(
+        "All schedule pages extracted",
+        total_pages=len(results),
+        passed_threshold=len(passed),
+    )
+    return results

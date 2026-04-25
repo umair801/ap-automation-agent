@@ -30,6 +30,9 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY . .
 
+# Create runtime folders for docx batch processing
+RUN mkdir -p /app/docx_input /app/docx_output /app/tmp_uploads /app/tmp_exports
+
 # Copy and make start script executable (must be done as root)
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh

@@ -8,7 +8,12 @@ from contextlib import asynccontextmanager
 from api.ingestion_router import router as ingestion_router
 from api.approval_router import router as approval_router
 from api.metrics_router import router as metrics_router
+from api.extraction_router import router as extraction_router
+from api.order_router import router as order_router
+from api.docx_router import router as docx_router
 from core.config import get_settings
+from fastapi.templating import Jinja2Templates
+from fastapi.requests import Request
 
 logger = structlog.get_logger(__name__)
 settings = get_settings()
@@ -56,6 +61,20 @@ app.add_middleware(
 app.include_router(ingestion_router)
 app.include_router(approval_router)
 app.include_router(metrics_router)
+app.include_router(extraction_router)
+app.include_router(order_router)
+app.include_router(docx_router)
+
+templates = Jinja2Templates(directory="templates")
+
+@app.get("/upload", tags=["Schedule Extraction"])
+async def upload_page(request: Request):
+    return templates.TemplateResponse("upload.html", {"request": request})
+
+
+@app.get("/docx-ui", tags=["DOCX Standardization"])
+async def docx_ui_page(request: Request):
+    return templates.TemplateResponse("docx_ui.html", {"request": request})
 
 
 # ------------------------------------------------------------------

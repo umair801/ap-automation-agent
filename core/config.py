@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str = Field(..., env="OPENAI_API_KEY")
 
+    # Anthropic
+    anthropic_api_key: str = Field(default="", env="ANTHROPIC_API_KEY")
+
     # Supabase
     supabase_url: str = Field(..., env="SUPABASE_URL")
     SUPABASE_KEY: str = Field(..., env="SUPABASE_KEY")
