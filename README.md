@@ -32,6 +32,7 @@ The system also includes a DOCX Document Standardization module that automatical
 | Feature | Live URL |
 |---|---|
 | Document Standardizer UI | [ap.datawebify.com/docx-ui](https://ap.datawebify.com/docx-ui) |
+| Order Extraction Demo | [ap.datawebify.com/orders/demo](https://ap.datawebify.com/orders/demo) |
 | Schedule Extractor UI | [ap.datawebify.com/upload](https://ap.datawebify.com/upload) |
 | Interactive API Docs | [ap.datawebify.com/docs](https://ap.datawebify.com/docs) |
 | System Health | [ap.datawebify.com/metrics/health](https://ap.datawebify.com/metrics/health) |
